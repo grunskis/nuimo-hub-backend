@@ -1,8 +1,8 @@
 ---
-# A role to install Python 3.5 from sources
+# A role to install Python 3 from sources
 # 
 # It was created mainly because we needed a reliable way to install
-# Python 3.5 on Raspbian Jessie, because if we dist-upgraded that to
+# latest Python 3 on Raspbian Jessie, because if we dist-upgraded that to
 # a version that included Python 3.5 the bluetooth device became unavailable
 
 - name: install build dependencies
@@ -76,11 +76,19 @@
     path: "{{build_dir}}/python"
   register: python_binary
 
+- name: get version of currently installed python3 version
+  command: /usr/local/bin/python --version
+  register: existing_python3_version
+  ignore_errors: True
+
+- name: extract python3 version from dict
+  set_fact:
+    existing_python3_version: "{{ existing_python3_version.stdout|default('') }}"
+
 - name: install sources
   command: make install
   args:
     chdir: "{{build_dir}}"
-    creates: /usr/local/bin/python3.5
   tags: python
   become: true
-  when: python_binary.stat.exists == True
+  when: python_binary.stat.exists == True and "Python {{python_version}}" != "{{existing_python3_version}}"
