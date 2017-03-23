@@ -1,0 +1,15 @@
+---
+- name: make sure locale is setup correctly
+  locale_gen:
+    name: "{{ locale }}"
+
+- name: update system to use our locale
+  command: update-locale LANG="{{ locale }}"
+
+- name: stop accepting locale env vars from your ssh client
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "^AcceptEnv LANG LC_(.+)"
+    line: "#AcceptEnv LANG LC_\\1"
+    backrefs: yes
+  notify: reload sshd
