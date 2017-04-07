@@ -41,7 +41,7 @@ def main(config_file_path=DEFAULT_CONFIG_FILE_PATH):
     nuimo_app = NuimoApp(ha_api_url, ble_adapter_name, controller_mac_address, component_instances)
 
     try:
-        nuimo_app.run()
+        nuimo_app.start()
     except KeyboardInterrupt:
         logger.debug("Stopping...")
         nuimo_app.stop()

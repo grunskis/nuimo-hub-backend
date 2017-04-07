@@ -1,7 +1,7 @@
 import logging
 
-from functools import partial
 from pprint import pformat
+from threading import Thread
 
 from nuimo import (Controller, ControllerListener, ControllerManager, Gesture)
 
@@ -59,6 +59,7 @@ class NuimoApp(NuimoControllerListener):
 
         self.components = components
         self.active_component = None
+        self.component_thread = None
 
         self.manager = ControllerManager(ble_adapter_name)
 
@@ -66,12 +67,9 @@ class NuimoApp(NuimoControllerListener):
         self.controller.listener = self
         self.controller.connect()
 
-        self.rotation_value = 0
-        self.action_in_progress = None
-
         self.ha = HomeAssistant(ha_api_url, on_connect=self.ha_connected)
 
-    def run(self):
+    def start(self):
         self.ha.start()
         self.manager.run()
 
@@ -79,11 +77,21 @@ class NuimoApp(NuimoControllerListener):
         self.ha.stop()
         self.manager.stop()
 
+        if self.active_component:
+            self.active_component.stopping = True
+
+        if self.controller.is_connected():
+            self.controller.disconnect()
+
     def ha_connected(self):
         self.controller.listener = self
 
         for component in self.components:
             self.initialize_component(component)
+
+            # TODO is there a better place where to set these?
+            component.ha = self.ha
+            component.nuimo = self
 
     def initialize_component(self, component):
         logger.debug("Initializing component: %s", component.name)
@@ -105,7 +113,7 @@ class NuimoApp(NuimoControllerListener):
 
             # set active component if it's not set already
             if not self.active_component:
-                self.set_active_component()
+                self.set_active_component(component)
 
         self.ha.get_state(component.entity_id, [set_state], self.show_error_icon)
 
@@ -125,13 +133,7 @@ class NuimoApp(NuimoControllerListener):
             self.show_error_icon()
             return
 
-        if event.gesture == Gesture.ROTATION:
-            action = self.process_rotation(event.value)
-        else:
-            action = self.process_gesture(event.gesture)
-
-        if action:
-            self.execute_action(action)
+        self.process_gesture(event.gesture, event.value)
 
     def process_internal_gesture(self, gesture):
         if gesture == Gesture.SWIPE_UP:
@@ -150,49 +152,22 @@ class NuimoApp(NuimoControllerListener):
 
         self.show_active_component()
 
-    def process_rotation(self, rotation_value):
-        self.rotation_value += rotation_value
-
-        if not self.action_in_progress:
-            action = self.active_component.rotation(self.rotation_value)
-            self.rotation_value = 0
-            self.action_in_progress = action
-            return action
-
-    def process_gesture(self, gesture):
-        action = None
+    def process_gesture(self, gesture, delta):
+        if gesture == Gesture.ROTATION:
+            self.active_component.rotation(delta)
 
         if gesture == Gesture.BUTTON_PRESS:
-            action = self.active_component.button_press()
+            self.active_component.button_press()
 
         elif gesture == Gesture.SWIPE_LEFT:
-            action = self.active_component.swipe_left()
+            self.active_component.swipe_left()
 
         elif gesture == Gesture.SWIPE_RIGHT:
-            action = self.active_component.swipe_right()
+            self.active_component.swipe_right()
 
         else:
             # TODO handle all remaining gestures...
             pass
-
-        return action
-
-    def execute_action(self, action):
-        def call_service_callback(entity_id, response):
-            if response["success"]:
-                matrix_config = action.led_matrix_config
-            else:
-                matrix_config = LEDMatrixConfig(icons.ERROR)
-
-            self.update_led_matrix(matrix_config)
-
-            self.action_in_progress = None
-
-        attributes = {"entity_id": action.entity_id}
-        attributes.update(action.extra_args)
-
-        callback = partial(call_service_callback, action.entity_id)
-        self.ha.call_service(action.domain, action.service, attributes, callback, self.show_error_icon)
 
     def get_prev_component(self):
         if not self.components:
@@ -226,20 +201,15 @@ class NuimoApp(NuimoControllerListener):
             active_component = self.components[0]
 
         if active_component:
-            logger.debug("active component: %s", active_component.name)
-
             if self.active_component:
+                logger.debug("Stopping component: %s", self.active_component.name)
+                self.active_component.stopping = True
                 self.ha.unregister_state_listener(self.active_component.entity_id)
 
+            logger.debug("Activating component: %s", active_component.name)
             self.active_component = active_component
-            self.ha.register_state_listener(self.active_component.entity_id, self.state_changed)
-
-    def state_changed(self, state):
-        """
-        Gets called whenever state changes in any device within
-        currently active component group.
-
-        """
+            self.component_thread = Thread(target=self.active_component.run)
+            self.component_thread.start()
 
     def show_active_component(self):
         if self.active_component:
@@ -259,7 +229,3 @@ class NuimoApp(NuimoControllerListener):
             fading=matrix_config.fading,
             ignore_duplicates=matrix_config.ignore_duplicates,
         )
-
-    def quit(self):
-        if self.controller.is_connected():
-            self.controller.disconnect()

@@ -199,8 +199,8 @@ class HomeAssistant(Thread):
         self.state_listeners.pop(entity_id, None)
 
     def process_result(self, result):
-        logger.debug("Received result id: %s success: %s result:", result["id"], result["success"])
-        logger.debug(pformat(result["result"]))
+        logger.info("Received result id: %s success: %s result:", result["id"], result["success"])
+        logger.debug(pformat(result))
 
         callback = self.result_callbacks.pop(result["id"])
         if callback:
