@@ -30,7 +30,6 @@ class Component(BaseComponent):
         super().__init__(config)
 
         self.sonos_controller = SoCo(config['ip_address'])
-        self.entity_id = config['entity_id']
 
         self.encoder = EncoderRing(0, 100)
 
