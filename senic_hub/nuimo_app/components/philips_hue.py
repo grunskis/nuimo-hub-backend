@@ -136,7 +136,7 @@ class Lights(HueBase):
 
         logger.debug("state: %s", pformat(self._state))
 
-        self._on = any(s['on'] for s in self._state.values())
+        self._on = all(s['on'] for s in self._state.values())
         self._brightness = min(s['bri'] for s in self._state.values())
 
         logger.debug("on: %s brightness: %s", self._on, self._brightness)
@@ -229,7 +229,7 @@ class Group(HueBase):
 
         logger.debug("state: %s", pformat(state))
 
-        self._on = state['action']['on']
+        self._on = state['state']['all_on']
         self._brightness = state['action']['bri']
 
         self._state = state
