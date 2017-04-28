@@ -31,13 +31,11 @@ class HueBase:
         if errors:
             return {'errors': errors}
 
-        merged = self.merge_success_responses(responses)
+        response = self.merge_success_responses(responses)
+        logger.debug("response: %s", response)
 
-        logger.debug("response: %s", merged)
-
-        self.update_state_from_response(merged)
-
-        return merged
+        self.update_state_from_response(response)
+        return response
 
     def merge_success_responses(self, responses):
         updates = [x['success'] for x in responses[0] if not list(x['success'])[0].endswith('transitiontime')]
