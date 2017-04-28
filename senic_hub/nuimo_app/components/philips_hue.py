@@ -6,7 +6,7 @@ from time import sleep, time
 
 from phue import Bridge
 
-from . import BaseComponent, EncoderRing
+from . import BaseComponent, EncoderRing, clamp_value
 
 from .. import matrices
 
@@ -245,7 +245,7 @@ class Component(BaseComponent):
 
         self.bridge = Bridge(config['ip_address'], config['username'])
 
-        self.encoder = EncoderRing(-254, 254)
+        self.delta_range = range(-254, 254)
         self.delta = 0
 
         self.lights = self.create_lights(config['lights'])
@@ -302,7 +302,7 @@ class Component(BaseComponent):
 
         elif 'bri' in attributes or 'bri_inc' in attributes:
             if self.lights.brightness:
-                matrix = matrices.light_bar(self.encoder.max_value, self.lights.brightness)
+                matrix = matrices.light_bar(self.delta_range.stop, self.lights.brightness)
                 self.nuimo.display_matrix(matrix, fading=True, ignore_duplicates=True)
             else:
                 self.turn_off()
@@ -341,7 +341,8 @@ class Component(BaseComponent):
             sleep(0.05)
 
     def send_updates(self):
-        delta = round(self.encoder.clamp_value(self.encoder.points_to_value(self.delta)))
+        normalized_delta = EncoderRing.normalize(self.delta, self.delta_range)
+        delta = round(clamp_value(normalized_delta, self.delta_range))
 
         if self.lights.on:
             self.set_light_attributes(bri_inc=delta)

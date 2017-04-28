@@ -3,18 +3,16 @@ from threading import Thread
 from .. import matrices
 
 
+def clamp_value(value, range_):
+    return min(max(value, range_.start), range_.stop)
+
+
 class EncoderRing:
     NUM_POINTS = 1800
 
-    def __init__(self, min_value, max_value):
-        self.min_value = min_value
-        self.max_value = max_value
-
-    def points_to_value(self, points):
-        return points / self.NUM_POINTS * self.max_value
-
-    def clamp_value(self, value):
-        return min(max(value, self.min_value), self.max_value)
+    @classmethod
+    def normalize(cls, points, range_):
+        return points / cls.NUM_POINTS * range_.stop
 
 
 class BaseComponent:
