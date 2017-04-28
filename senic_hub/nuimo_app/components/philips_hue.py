@@ -54,7 +54,7 @@ class HueBase:
                 self.brightness = min(max(self.brightness + value, 0), 254)
 
 
-class NoLights(HueBase):
+class EmptyLightSet(HueBase):
     """
     Wrapper used when we don't have any reachable lights to control
     """
@@ -90,7 +90,7 @@ class NoLights(HueBase):
         return 60  # seconds
 
 
-class Lights(HueBase):
+class LightSet(HueBase):
     """
     Wraps one or multiple lights
     """
@@ -259,11 +259,11 @@ class Component(BaseComponent):
 
         reachable_lights = self.filter_reachable(lights)
         if not reachable_lights:
-            lights = NoLights()
+            lights = EmptyLightSet()
         elif len(reachable_lights) > 10:
             lights = Group(self.bridge, reachable_lights)
         else:
-            lights = Lights(self.bridge, reachable_lights)
+            lights = LightSet(self.bridge, reachable_lights)
 
         return lights
 
