@@ -48,20 +48,18 @@ def discover_devices(devices, now):
         # make sure we get updates for devices we already had discovered before
         existing_device = next((d for d in known_devices if d["id"] == device["id"]), None)
         if existing_device:
-            # device already known, check if we should update any fields
-            if {k: v for k, v in existing_device.items() if k != DISCOVERY_TIMESTAMP_FIELD} == device:
-                # all fields match, use the already known device
-                continue
-            else:
-                # fields don't match, device will added as new
-                known_devices.remove(existing_device)
+            existing_device['ip'] = device['ip']
+            existing_device['name'] = device['name']
+            existing_device[DISCOVERY_TIMESTAMP_FIELD] = str(now)
+            all_devices.append(existing_device)
+        else:
+            device[DISCOVERY_TIMESTAMP_FIELD] = str(now)
+            all_devices.append(device)
 
-        device[DISCOVERY_TIMESTAMP_FIELD] = str(now)
-        all_devices.append(device)
-
-    # add already known devices that were not found in this discovery
-    # run or it was found that they didn't have any updates
-    all_devices.extend(known_devices)
+    for device in known_devices:
+        is_found_again = next((d for d in all_devices if d["id"] == device["id"]), None) is not None
+        if not is_found_again:
+            all_devices.append(device)
 
     return sorted(all_devices, key=lambda d: d["id"])
 

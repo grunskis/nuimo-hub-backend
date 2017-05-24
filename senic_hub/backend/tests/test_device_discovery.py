@@ -141,22 +141,27 @@ def test_discover_devices_includes_new_device_discovered():
     devices = [{
         "id": "1",
         "name": "first",
+        "ip": "127.0.0.1",
         DISCOVERY_TIMESTAMP_FIELD: str(now - timedelta(minutes=2)),
     }]
     discovered_devices = [{
         "id": "1",
         "name": "first",
+        "ip": "127.0.0.1",
     }, {
         "id": "2",
         "name": "second",
+        "ip": "127.0.0.2",
     }]
     expected = [{
         "id": "1",
         "name": "first",
-        DISCOVERY_TIMESTAMP_FIELD: str(now - timedelta(minutes=2)),
+        "ip": "127.0.0.1",
+        DISCOVERY_TIMESTAMP_FIELD: str(now),
     }, {
         "id": "2",
         "name": "second",
+        "ip": "127.0.0.2",
         DISCOVERY_TIMESTAMP_FIELD: str(now),
     }]
     with patch("senic_hub.backend.device_discovery.discover") as discover_mock:
@@ -169,21 +174,26 @@ def test_discover_devices_update_device_with_updated_fields():
     devices = [{
         "id": "1",
         "name": "first",
+        "ip": "127.0.0.1",
         DISCOVERY_TIMESTAMP_FIELD: str(now - timedelta(minutes=2)),
     }]
     discovered_devices = [{
         "id": "1",
+        "ip": "127.0.0.1",
         "name": "first updated",
     }, {
         "id": "2",
+        "ip": "127.0.0.2",
         "name": "second",
     }]
     expected = [{
         "id": "1",
+        "ip": "127.0.0.1",
         "name": "first updated",
         DISCOVERY_TIMESTAMP_FIELD: str(now),
     }, {
         "id": "2",
+        "ip": "127.0.0.2",
         "name": "second",
         DISCOVERY_TIMESTAMP_FIELD: str(now),
     }]
@@ -196,15 +206,18 @@ def test_discover_devices_device_that_wasnt_discovered_again_is_not_removed_from
     now = datetime.utcnow()
     devices = [{
         "id": "1",
+        "ip": "127.0.0.1",
         "name": "first",
         DISCOVERY_TIMESTAMP_FIELD: str(now),
     }, {
         "id": "2",
+        "ip": "127.0.0.2",
         "name": "second",
         DISCOVERY_TIMESTAMP_FIELD: str(now),
     }]
     discovered_devices = [{
         "id": "1",
+        "ip": "127.0.0.1",
         "name": "first",
     }]
     expected = devices
