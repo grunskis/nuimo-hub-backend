@@ -228,6 +228,9 @@ class HostNameCharacteristic(Characteristic):
         logger.info("Disabled notification about hostname.")
         self._notifying = False
 
+    def remote_disconnected(self):
+        self._stop_notify()
+
 
 class VersionCharacteristic(Characteristic):
     """
