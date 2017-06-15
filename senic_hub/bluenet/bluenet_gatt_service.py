@@ -279,5 +279,5 @@ class CredentialsCharacteristic(Characteristic):
 
     def _write_value(self, value, options):
         self.credentials = bytes(value).decode()
-        logger.info("Received password: %s" % self.credentials)
+        logger.info("Received password")
         self.service._credentials_received()

@@ -107,9 +107,10 @@ class BluenetDaemon(object):
 
     def join_network(self, ssid, credentials):
         # TODO: Join Wi-Fi on a separate thread as otherwise the Bluetooth
-        #       thread gets block and no write response is sent for the
-        #       crendentials characteristic.
-        logger.info("Trying to join network: %s, Credentials: %s" % (ssid, credentials))
+        #       thread gets blocked and no write response is sent for the
+        #       credentials characteristic.
+        logger.info("Trying to join network: %s" % ssid)
+        logger.debug("Password: %s" % credentials)
         self._configure_wlan(ssid, credentials)
 
     def get_wifi_status(self):
@@ -224,7 +225,6 @@ class BluenetDaemon(object):
                     logger.info("Ignoring state change to DISCONNECTED as we are trying to connect to a network")
                 else:
                     status = new_status
-                    self._gatt_service.set_connection_state(status, self._current_ssid)
                     self._on_wifi_status_changed(status)
                     last_status_changed_time = time.time()
             if self._ble_peripheral.is_connected:
@@ -243,8 +243,8 @@ class BluenetDaemon(object):
         call(['nmcli', 'con', 'delete', NM_CONNECTION_NAME])
 
         if ssid and password:
-            logger.info("=> nmcli dev wifi con %s password %s ifname %s name %s" %
-                        (ssid, password, self._wlan_adapter, NM_CONNECTION_NAME))
+            logger.info("=> nmcli dev wifi con %s password *** ifname %s name %s" %
+                        (ssid, self._wlan_adapter, NM_CONNECTION_NAME))
             call([
                 'nmcli', 'dev', 'wifi',
                 'con', ssid,
