@@ -177,6 +177,17 @@ class BluenetDaemon(object):
                     logger.info("Network disappeared: %s" % ssid)
                     del found_ssids[ssid]
 
+            if (self._current_ssid in found_ssids and
+                    self.get_wifi_status() == WifiConnectionState.DISCONNECTED):
+                logger.info("Known network reappeared, trying to reconnect to it.")
+                # Actually this should be done by NetworkManager automatically (because
+                # 'autoconnect' flag is true by default) but this doesn't work reliable
+                # (see for example https://bugs.launchpad.net/ubuntu/+source/network-manager/+bug/1354924)
+                try:
+                    call(['nmcli', 'con', 'up', NM_CONNECTION_NAME])
+                except CalledProcessError as e:
+                    logger.warning("Error while trying to bring network back up: %s" % e)
+
             self._gatt_service.set_available_networks(found_ssids.keys())
 
         while True:
@@ -217,6 +228,10 @@ class BluenetDaemon(object):
             if self._ble_peripheral.is_connected:
                 time.sleep(1)
             else:
+                # NetworkManager is slow at detecting connection changes
+                # -> checking every 30s is enough while setup app is not connected
+                # (when Wifi router is turned off connection status will be "Connecting"
+                # for 2 minutes before going to "Disconnected")
                 time.sleep(30)
 
     def _configure_wlan(self, ssid, password):
