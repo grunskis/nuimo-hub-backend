@@ -60,6 +60,9 @@ class BluenetService(Service):
     def set_connection_state(self, state, current_ssid):
         self._connection_state_characteristic.set_connection_state(state, current_ssid)
 
+    def set_hostname(self, hostname):
+        self._host_name_characteristic.set_hostname(hostname)
+
     def set_credentials_received_callback(self, cb):
         """
         The provided callback will be called when the credentials for a network were received.
@@ -197,18 +200,33 @@ class ConnectionStateCharacteristic(Characteristic):
 class HostNameCharacteristic(Characteristic):
     """
     GATT characteristic providing the host name of the server.
-
-    Possible operations: Read
+    
+    Possible operations: Read + Notify
     Content: host name as array of characters
     """
 
-    def __init__(self, bus, index, service, host_name):
-        super().__init__(bus, index, BluenetUuids.HOST_NAME, ['read'], service)
-        self.host_name = host_name
+    def __init__(self, bus, index, service, hostname):
+        super().__init__(bus, index, BluenetUuids.HOST_NAME, ['read', 'notify'], service)
+        self._notifying = False
+        self.hostname = hostname
+
+    def set_hostname(self, hostname):
+        self.hostname = hostname
+        if self._notifying:
+            logger.info("Sending updated hostname")
+            self.value_update(string_to_dbus_array(self.hostname))
 
     def _read_value(self, options):
         logger.info("Sending HostName Value")
-        return string_to_dbus_array(self.host_name)
+        return string_to_dbus_array(self.hostname)
+
+    def _start_notify(self):
+        logger.info("Enabled notification about hostname.")
+        self._notifying = True
+
+    def _stop_notify(self):
+        logger.info("Disabled notification about hostname.")
+        self._notifying = False
 
 
 class VersionCharacteristic(Characteristic):

@@ -77,13 +77,15 @@ class BluenetDaemon(object):
         self._current_ssid = None
         self._is_joining_wifi = False
         self._keep_advertising = False
+        self._hostname = None
 
     def run(self, hostname, bluetooth_alias, keep_advertising):
+        self._hostname = hostname
         self._keep_advertising = keep_advertising
 
         # prepare BLE GATT Service:
         self._ble_peripheral = Peripheral(bluetooth_alias, self._bluetooth_adapter)
-        gatt_service = BluenetService(self._ble_peripheral.bus, 0, hostname, "1.0")
+        gatt_service = BluenetService(self._ble_peripheral.bus, 0, self._get_hostname(), "1.0")
         gatt_service.set_credentials_received_callback(self.join_network)
         self._gatt_service = gatt_service
         self._ble_peripheral.add_service(gatt_service)
@@ -262,6 +264,8 @@ class BluenetDaemon(object):
 
     def _on_wifi_status_changed(self, new_status):
         self._gatt_service.set_connection_state(new_status, self._current_ssid)
+        if new_status == WifiConnectionState.CONNECTED:
+            self._update_hostname()
         if (new_status == WifiConnectionState.CONNECTED and
                 not self._ble_peripheral.is_connected and
                 self._ble_peripheral.is_advertising and
@@ -283,6 +287,31 @@ class BluenetDaemon(object):
             logging.info("Wifi provisioning using setup app was successful. "
                          "Stopping BLE advertisement.")
             self._ble_peripheral.stop_advertising()
+
+    def _update_hostname(self):
+        hostname = self._get_hostname()
+        logger.info("New hostname: %s" % hostname)
+        self._gatt_service.set_hostname(hostname)
+
+    def _get_hostname(self):
+        if '%IP' in self._hostname:
+            hostname = self._hostname.replace('%IP', self._get_ip_address())
+            return hostname
+        else:
+            return self._hostname
+
+    def _get_ip_address(self):
+        try:
+            ifconfig_output = check_output(['ifconfig', self._wlan_adapter]).decode()
+        except CalledProcessError as e:
+            logger.warning("ifconfig error: %s" % e)
+            return ''
+
+        if 'addr:' not in ifconfig_output:
+            return ''
+
+        ip = ifconfig_output.split('addr:', 1)[1].split(' ', 1)[0]
+        return ip
 
 
 if __name__ == '__main__':
