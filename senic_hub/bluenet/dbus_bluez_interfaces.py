@@ -129,7 +129,7 @@ class Characteristic(dbus.service.Object):
         self.service = service
         self.flags = flags
         self.descriptors = []
-        self.notifying = False
+        self.is_notifying = False
 
     def get_properties(self):
         return {
@@ -177,13 +177,13 @@ class Characteristic(dbus.service.Object):
         """
         Called when the remote subscribes to changes for this characteristic.
         """
-        self.notifying = True
+        self.is_notifying = True
 
     def _stop_notify(self):
         """
         Called when the remote unsubscribes from changes for this characteristic.
         """
-        self.notifying = False
+        self.is_notifying = False
 
     def remote_disconnected(self):
         """
