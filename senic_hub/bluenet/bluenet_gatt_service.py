@@ -89,7 +89,6 @@ class AvailableNetworksCharacteristic(Characteristic):
 
     def __init__(self, bus, index, service):
         super().__init__(bus, index, BluenetUuids.AVAILABLE_NETWORKS, ['notify'], service)
-        self._notifying = False
         self.ssids = []
         self._ssids_sent = []
         self._ssid_last_sent = ''
@@ -99,7 +98,7 @@ class AvailableNetworksCharacteristic(Characteristic):
     def _send_next_ssid(self):
         if not self.ssids:
             logger.debug("No SSIDs available.")
-            return self._notifying
+            return self.notifying
 
         next_ssid = ''
         for ssid in self.ssids:
@@ -120,7 +119,7 @@ class AvailableNetworksCharacteristic(Characteristic):
         self._ssid_last_sent = next_ssid
         self._ssids_sent.append(next_ssid)
 
-        return self._notifying
+        return self.notifying
 
     def _start_send_ssids(self):
         GObject.timeout_add(self._update_interval, self._send_next_ssid)
@@ -132,22 +131,22 @@ class AvailableNetworksCharacteristic(Characteristic):
         return string_to_dbus_array(self._ssid_last_sent)
 
     def _start_notify(self):
-        if self._notifying:
+        if self.notifying:
             logger.info("Already notifying, nothing to do")
             return
 
         logger.info("Start notifying about available networks")
-        self._notifying = True
+        self.notifying = True
         self._ssids_sent = []
         self._start_send_ssids()
 
     def _stop_notify(self):
-        if not self._notifying:
+        if not self.notifying:
             logger.info("Not notifying, nothing to do")
             return
 
         logger.info("Stop notifying about available networks")
-        self._notifying = False
+        self.notifying = False
 
 
 class ConnectionStateCharacteristic(Characteristic):
@@ -161,14 +160,13 @@ class ConnectionStateCharacteristic(Characteristic):
 
     def __init__(self, bus, index, service):
         super().__init__(bus, index, BluenetUuids.CONNECTION_STATE, ['read', 'notify'], service)
-        self._notifying = False
         self.state = WifiConnectionState.DISCONNECTED
         self.current_ssid = None
 
     def set_connection_state(self, state, current_ssid):
         self.state = state
         self.current_ssid = current_ssid
-        if self._notifying:
+        if self.notifying:
             logger.info("Sending updated connection state")
             if self.state != WifiConnectionState.DISCONNECTED and self.current_ssid:
                 self.value_update([dbus.Byte(self.state.value)] + string_to_dbus_array(self.current_ssid))
@@ -182,14 +180,6 @@ class ConnectionStateCharacteristic(Characteristic):
         else:
             return [dbus.Byte(self.state.value)]
 
-    def _start_notify(self):
-        logger.info("Enabled notification about connection state.")
-        self._notifying = True
-
-    def _stop_notify(self):
-        logger.info("Disabled notification about connection state.")
-        self._notifying = False
-
 
 class HostNameCharacteristic(Characteristic):
     """
@@ -201,26 +191,17 @@ class HostNameCharacteristic(Characteristic):
 
     def __init__(self, bus, index, service, hostname):
         super().__init__(bus, index, BluenetUuids.HOST_NAME, ['read', 'notify'], service)
-        self._notifying = False
         self.hostname = hostname
 
     def set_hostname(self, hostname):
         self.hostname = hostname
-        if self._notifying:
+        if self.notifying:
             logger.info("Sending updated hostname")
             self.value_update(string_to_dbus_array(self.hostname))
 
     def _read_value(self, options):
         logger.info("Sending HostName Value")
         return string_to_dbus_array(self.hostname)
-
-    def _start_notify(self):
-        logger.info("Enabled notification about hostname.")
-        self._notifying = True
-
-    def _stop_notify(self):
-        logger.info("Disabled notification about hostname.")
-        self._notifying = False
 
 
 class VersionCharacteristic(Characteristic):

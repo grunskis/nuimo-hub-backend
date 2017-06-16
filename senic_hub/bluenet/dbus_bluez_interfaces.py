@@ -129,6 +129,7 @@ class Characteristic(dbus.service.Object):
         self.service = service
         self.flags = flags
         self.descriptors = []
+        self.notifying = False
 
     def get_properties(self):
         return {
@@ -176,15 +177,13 @@ class Characteristic(dbus.service.Object):
         """
         Called when the remote subscribes to changes for this characteristic.
         """
-        logger.warning("Default Char StartNotify called, returning error")
-        raise NotSupportedException()
+        self.notifying = True
 
     def _stop_notify(self):
         """
-        Called when the remote unsubscribes to changes for this characteristic.
-        This is not called when the remote disconnects (use remote_disconnected() to detect this).
+        Called when the remote unsubscribes from changes for this characteristic.
         """
-        raise NotSupportedException()
+        self.notifying = False
 
     def remote_disconnected(self):
         """
