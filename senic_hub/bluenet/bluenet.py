@@ -282,9 +282,9 @@ class BluenetDaemon(object):
             # because of that we are not disabling it in the first place when a device is connected
             logging.info("Wifi connected. Stopping BLE advertisement.")
             self._ble_peripheral.stop_advertising()
-        elif (wifi_status == WifiConnectionState.DISCONNECTED and
-                not self._ble_peripheral.is_advertising):
-            logging.info("Wifi not connected. Starting BLE advertisement to be able to "
+        elif (not self._ble_peripheral.is_advertising and
+                (not self._auto_advertise or wifi_status == WifiConnectionState.DISCONNECTED)):
+            logging.info("Starting BLE advertisement to be able to "
                          "use the setup app to reconfigure Wifi.")
             self._ble_peripheral.start_advertising()
 
