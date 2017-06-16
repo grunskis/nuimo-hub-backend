@@ -91,10 +91,9 @@ class BluenetDaemon(object):
         self._gatt_service = gatt_service
         self._ble_peripheral.add_service(gatt_service)
         self._ble_peripheral.add_advertised_service_uuid(BluenetUuids.SERVICE)
-        self._ble_peripheral.on_remote_disconnected(self._on_remote_disconnected)
+        self._ble_peripheral.on_remote_disconnected(self._update_advertising_state)
 
-        if not (self._auto_advertise and self.get_wifi_status() == WifiConnectionState.CONNECTED):
-            self._ble_peripheral.start_advertising()
+        self._update_advertising_state()
 
         # create thread to scan for networks:
         scan_thread = Thread(target=self._scan_wifi_loop, daemon=True)
@@ -270,27 +269,24 @@ class BluenetDaemon(object):
         self._gatt_service.set_connection_state(new_status, self._current_ssid)
         if new_status == WifiConnectionState.CONNECTED:
             self._update_hostname()
+        self._update_advertising_state(new_status)
+
+    def _update_advertising_state(self, wifi_status=None):
+        if not wifi_status:
+            wifi_status = self.get_wifi_status()
         if (self._auto_advertise and
-                new_status == WifiConnectionState.CONNECTED and
+                wifi_status == WifiConnectionState.CONNECTED and
                 not self._ble_peripheral.is_connected and
                 self._ble_peripheral.is_advertising):
             # re-enabling advertisement is not possible while a device is connected
             # because of that we are not disabling it in the first place when a device is connected
-            logging.info("Wifi reconnected. Stopping BLE advertisement.")
+            logging.info("Wifi connected. Stopping BLE advertisement.")
             self._ble_peripheral.stop_advertising()
-        elif (new_status == WifiConnectionState.DISCONNECTED and
+        elif (wifi_status == WifiConnectionState.DISCONNECTED and
                 not self._ble_peripheral.is_advertising):
-            logging.info("Wifi connection lost. Starting BLE advertisement to be able to "
+            logging.info("Wifi not connected. Starting BLE advertisement to be able to "
                          "use the setup app to reconfigure Wifi.")
             self._ble_peripheral.start_advertising()
-
-    def _on_remote_disconnected(self):
-        if (self._auto_advertise and
-                self.get_wifi_status() == WifiConnectionState.CONNECTED and
-                self._ble_peripheral.is_advertising):
-            logging.info("Wifi provisioning using setup app was successful. "
-                         "Stopping BLE advertisement.")
-            self._ble_peripheral.stop_advertising()
 
     def _update_hostname(self):
         hostname = self._get_hostname()
