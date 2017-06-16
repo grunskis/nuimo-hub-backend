@@ -78,6 +78,7 @@ class BluenetDaemon(object):
         self._is_joining_wifi = False
         self._auto_advertise = False
         self._hostname = None
+        self._join_thread = None
 
     def run(self, hostname, bluetooth_alias, auto_advertise):
         self._hostname = hostname
@@ -108,8 +109,13 @@ class BluenetDaemon(object):
     def join_network(self, ssid, credentials):
         logger.info("Trying to join network: %s" % ssid)
         logger.debug("Password: %s" % credentials)
-        thread = Thread(target=self._configure_wlan, args=(ssid, credentials))
-        thread.start()
+        if self._join_thread and self._join_thread.is_alive():
+            logger.warning("Cannot join network while previous joining is still in process")
+        else:
+            # using a new thread to join the network because this is a blocking operation
+            # and would otherwise prevent Bluetooth from sending the characteristic write response
+            self._join_thread = Thread(target=self._configure_wlan, args=(ssid, credentials))
+            self._join_thread.start()
 
     def get_wifi_status(self):
         # get current SSID:
