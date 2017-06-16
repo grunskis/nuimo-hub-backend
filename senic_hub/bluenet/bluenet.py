@@ -293,8 +293,11 @@ class BluenetDaemon(object):
 
     def _get_hostname(self):
         if '%IP' in self._hostname:
-            hostname = self._hostname.replace('%IP', self._get_ip_address())
-            return hostname
+            ip = self._get_ip_address()
+            if ip:
+                return self._hostname.replace('%IP', ip)
+            else:
+                return ''
         else:
             return self._hostname
 
@@ -303,10 +306,10 @@ class BluenetDaemon(object):
             ifconfig_output = check_output(['ifconfig', self._wlan_adapter]).decode()
         except CalledProcessError as e:
             logger.warning("ifconfig error: %s" % e)
-            return ''
+            return None
 
         if 'addr:' not in ifconfig_output:
-            return ''
+            return None
 
         ip = ifconfig_output.split('addr:', 1)[1].split(' ', 1)[0]
         return ip
