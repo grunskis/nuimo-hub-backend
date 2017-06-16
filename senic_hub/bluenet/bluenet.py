@@ -31,7 +31,7 @@ def bluenet_cli(ctx, wlan, bluetooth):
 @click.option('--hostname', '-h', required=True, help="Host Name of Hub")
 @click.option('--alias', '-a', required=True, help="Bluetooth Alias Name")
 @click.option('--verbose', '-v', count=True, help="Print info messages (-vv for debug messages)")
-@click.option('--keep_advertising', is_flag=True, help="Never turn off BLE advertising")
+@click.option('--keep-advertising', is_flag=True, help="Never turn off BLE advertising")
 @click.pass_context
 def bluenet_start(ctx, hostname, alias, verbose, keep_advertising):
     if verbose >= 2:
