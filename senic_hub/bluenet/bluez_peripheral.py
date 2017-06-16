@@ -117,7 +117,7 @@ class Peripheral(object):
         self._ad_manager.RegisterAdvertisement(
             self._advertisement.get_path(), {},
             reply_handler=lambda: logger.info("Advertisement registered"),
-            error_handler=self._register_ad_error_cb)
+            error_handler=self._register_advertisement_failed)
         self.is_advertising = True
 
     def stop_advertising(self):
@@ -236,7 +236,7 @@ class Peripheral(object):
         self._gatt_manager.RegisterApplication(
             self._app.get_path(), {},
             reply_handler=lambda: logger.info("GATT application registered"),
-            error_handler=self._register_app_error_cb)
+            error_handler=self._register_application_failed)
 
         self._device_properties_changed_signal = self.bus.add_signal_receiver(
             self._device_properties_changed,
@@ -252,11 +252,11 @@ class Peripheral(object):
             arg0='org.bluez.Adapter1',
             path_keyword='path')
 
-    def _register_app_error_cb(self, error):
+    def _register_application_failed(self, error):
         logger.error("Failed to register application: %s" % error)
         self._main_loop.quit()
 
-    def _register_ad_error_cb(self, error):
+    def _register_advertisement_failed(self, error):
         logger.error("Failed to register advertisement: %s" % error)
         logger.error("Make sure no device is connected before registering an advertisement!")
         if self.is_connected:
