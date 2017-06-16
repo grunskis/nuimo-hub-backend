@@ -130,23 +130,10 @@ class AvailableNetworksCharacteristic(Characteristic):
         logger.info("Sending AvailableNetworks Value")
         return string_to_dbus_array(self._ssid_last_sent)
 
-    def _start_notify(self):
-        if self.is_notifying:
-            logger.info("Already notifying, nothing to do")
-            return
-
+    def _on_start_notifying(self):
         logger.info("Start notifying about available networks")
-        self.is_notifying = True
         self._ssids_sent = []
         self._start_send_ssids()
-
-    def _stop_notify(self):
-        if not self.is_notifying:
-            logger.info("Not notifying, nothing to do")
-            return
-
-        logger.info("Stop notifying about available networks")
-        self.is_notifying = False
 
 
 class ConnectionStateCharacteristic(Characteristic):

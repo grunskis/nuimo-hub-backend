@@ -129,7 +129,7 @@ class Characteristic(dbus.service.Object):
         self.service = service
         self.flags = flags
         self.descriptors = []
-        self.is_notifying = False
+        self._is_notifying = False
 
     def get_properties(self):
         return {
@@ -158,6 +158,10 @@ class Characteristic(dbus.service.Object):
     def value_update(self, byte_array):
         self.PropertiesChanged(GATT_CHARACTERISTIC_IFACE, {'Value': byte_array}, [])
 
+    @property
+    def is_notifying(self):
+        return self._is_notifying
+
     def _read_value(self, options):
         """
         Called when the remote tries to read this characteristic.
@@ -173,17 +177,17 @@ class Characteristic(dbus.service.Object):
         logger.warning("Default Char WriteValue called, returning error")
         raise NotSupportedException()
 
-    def _start_notify(self):
+    def _on_start_notifying(self):
         """
         Called when the remote subscribes to changes for this characteristic.
         """
-        self.is_notifying = True
+        pass
 
-    def _stop_notify(self):
+    def _on_stop_notifying(self):
         """
         Called when the remote unsubscribes from changes for this characteristic.
         """
-        self.is_notifying = False
+        pass
 
     def remote_disconnected(self):
         """
@@ -191,10 +195,7 @@ class Characteristic(dbus.service.Object):
         Calls _stop_notify() to stop notifying characteristic changes,
         because BlueZ doesn't call StopNotify when the remote device disconnects.
         """
-        try:
-            self._stop_notify()
-        except NotSupportedException:
-            pass
+        self._on_stop_notifying()
 
     @dbus.service.method(DBUS_PROP_IFACE, in_signature='s', out_signature='a{sv}')
     def GetAll(self, interface):
@@ -213,11 +214,17 @@ class Characteristic(dbus.service.Object):
 
     @dbus.service.method(GATT_CHARACTERISTIC_IFACE)
     def StartNotify(self):
-        self._start_notify()
+        if self.is_notifying:
+            return
+        self._is_notifying = True
+        self._on_start_notifying()
 
     @dbus.service.method(GATT_CHARACTERISTIC_IFACE)
     def StopNotify(self):
-        self._stop_notify()
+        if not self.is_notifying:
+            return
+        self._is_notifying = False
+        self._on_stop_notifying()
 
     @dbus.service.signal(DBUS_PROP_IFACE, signature='sa{sv}as')
     def PropertiesChanged(self, interface, changed, invalidated):
