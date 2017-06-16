@@ -184,18 +184,18 @@ class Characteristic(dbus.service.Object):
         Called when the remote unsubscribes to changes for this characteristic.
         This is not called when the remote disconnects (use remote_disconnected() to detect this).
         """
-        logger.warning("Default Char StopNotify called, returning error")
         raise NotSupportedException()
 
     def remote_disconnected(self):
         """
         Called when the remote device disconnected.
-        Should be overridden to stop notifying characteristic changes,
+        Calls _stop_notify() to stop notifying characteristic changes,
         because BlueZ doesn't call StopNotify when the remote device disconnects.
         """
-
-        # TODO: We can call _stop_notify() for all characteristics here.
-        pass
+        try:
+            self._stop_notify()
+        except NotSupportedException:
+            pass
 
     @dbus.service.method(DBUS_PROP_IFACE, in_signature='s', out_signature='a{sv}')
     def GetAll(self, interface):
