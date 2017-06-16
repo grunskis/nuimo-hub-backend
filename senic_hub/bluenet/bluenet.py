@@ -31,16 +31,16 @@ def bluenet_cli(ctx, wlan, bluetooth):
 @click.option('--hostname', '-h', required=True, help="Host Name of Hub")
 @click.option('--alias', '-a', required=True, help="Bluetooth Alias Name")
 @click.option('--verbose', '-v', count=True, help="Print info messages (-vv for debug messages)")
-@click.option('--keep-advertising', is_flag=True, help="Never turn off BLE advertising")
+@click.option('--auto-advertise', is_flag=True, help="Disable BLE advertising when not needed")
 @click.pass_context
-def bluenet_start(ctx, hostname, alias, verbose, keep_advertising):
+def bluenet_start(ctx, hostname, alias, verbose, auto_advertise):
     if verbose >= 2:
         logging.basicConfig(level=logging.DEBUG)
     elif verbose >= 1:
         logging.basicConfig(level=logging.INFO)
     else:
         logging.basicConfig(level=logging.WARNING)
-    ctx.obj.run(hostname, alias, keep_advertising)
+    ctx.obj.run(hostname, alias, auto_advertise)
 
 
 @bluenet_cli.command(name='join', help="only join Wifi")
@@ -76,12 +76,12 @@ class BluenetDaemon(object):
         self._ble_peripheral = None
         self._current_ssid = None
         self._is_joining_wifi = False
-        self._keep_advertising = False
+        self._auto_advertise = False
         self._hostname = None
 
-    def run(self, hostname, bluetooth_alias, keep_advertising):
+    def run(self, hostname, bluetooth_alias, auto_advertise):
         self._hostname = hostname
-        self._keep_advertising = keep_advertising
+        self._auto_advertise = auto_advertise
 
         # prepare BLE GATT Service:
         self._ble_peripheral = Peripheral(bluetooth_alias, self._bluetooth_adapter)
@@ -92,7 +92,7 @@ class BluenetDaemon(object):
         self._ble_peripheral.add_advertised_service_uuid(BluenetUuids.SERVICE)
         self._ble_peripheral.on_remote_disconnected(self._on_remote_disconnected)
 
-        if self.get_wifi_status() != WifiConnectionState.CONNECTED or self._keep_advertising:
+        if not (self._auto_advertise and self.get_wifi_status() == WifiConnectionState.CONNECTED):
             self._ble_peripheral.start_advertising()
 
         # create thread to scan for networks:
@@ -264,24 +264,24 @@ class BluenetDaemon(object):
         self._gatt_service.set_connection_state(new_status, self._current_ssid)
         if new_status == WifiConnectionState.CONNECTED:
             self._update_hostname()
-        if (new_status == WifiConnectionState.CONNECTED and
+        if (self._auto_advertise and
+                new_status == WifiConnectionState.CONNECTED and
                 not self._ble_peripheral.is_connected and
-                self._ble_peripheral.is_advertising and
-                not self._keep_advertising):
+                self._ble_peripheral.is_advertising):
             # re-enabling advertisement is not possible while a device is connected
             # because of that we are not disabling it in the first place when a device is connected
             logging.info("Wifi reconnected. Stopping BLE advertisement.")
             self._ble_peripheral.stop_advertising()
-        elif new_status == WifiConnectionState.DISCONNECTED \
-                and not self._ble_peripheral.is_advertising:
+        elif (new_status == WifiConnectionState.DISCONNECTED and
+                not self._ble_peripheral.is_advertising):
             logging.info("Wifi connection lost. Starting BLE advertisement to be able to "
                          "use the setup app to reconfigure Wifi.")
             self._ble_peripheral.start_advertising()
 
     def _on_remote_disconnected(self):
-        if self.get_wifi_status() == WifiConnectionState.CONNECTED \
-                and self._ble_peripheral.is_advertising \
-                and not self._keep_advertising:
+        if (self._auto_advertise and
+                self.get_wifi_status() == WifiConnectionState.CONNECTED and
+                self._ble_peripheral.is_advertising):
             logging.info("Wifi provisioning using setup app was successful. "
                          "Stopping BLE advertisement.")
             self._ble_peripheral.stop_advertising()
