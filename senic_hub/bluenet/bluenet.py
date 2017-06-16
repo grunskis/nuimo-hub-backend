@@ -106,12 +106,10 @@ class BluenetDaemon(object):
         self._ble_peripheral.run()
 
     def join_network(self, ssid, credentials):
-        # TODO: Join Wi-Fi on a separate thread as otherwise the Bluetooth
-        #       thread gets blocked and no write response is sent for the
-        #       credentials characteristic.
         logger.info("Trying to join network: %s" % ssid)
         logger.debug("Password: %s" % credentials)
-        self._configure_wlan(ssid, credentials)
+        thread = Thread(target=self._configure_wlan, args=(ssid, credentials))
+        thread.start()
 
     def get_wifi_status(self):
         # get current SSID:
