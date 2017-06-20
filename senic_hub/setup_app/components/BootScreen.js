@@ -19,16 +19,24 @@ export default class BootScreen extends Screen {
   }
 
   didAppear() {
-    this.pingHub()
+    Promise
+      .race([
+        this.pingHub(),
+        new Promise((_, reject) =>
+          setTimeout(() => {
+            reject(new Error('Timeout'))
+          }, 5000),
+      )])
+      .catch(() => this.setState({hubUnreachable: true}))
   }
 
   pingHub() {
-    Settings.getHubApiUrl()
+    return Settings.getHubApiUrl()
       .then(hubApiUrl => {
         if (hubApiUrl) {
           console.log('Stored Hub API URL:', hubApiUrl)
 
-          fetch(hubApiUrl)
+          return fetch(hubApiUrl)
             .then(response => {
               Settings.HUB_API_URL = hubApiUrl  // TODO is there a better way?
               console.log('Host', Settings.HUB_API_URL, 'reachable...')
@@ -54,6 +62,7 @@ export default class BootScreen extends Screen {
             })
         }
         else {
+          console.log('Hub API URL not found. Starting onboarding...')
           this.resetTo('setup.welcome')
         }
       })
